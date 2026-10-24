@@ -74,22 +74,25 @@
       touch-action: none;
     }
 
-    /* CRT Scanlines Overlay */
+    /* CRT Scanlines Overlay (Only rendered on desktop to avoid mobile Safari compositing bottlenecks) */
     .scanlines {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      background: linear-gradient(rgba(18, 16, 16, 0) 50%,
-          rgba(0, 0, 0, 0.28) 50%), linear-gradient(90deg,
-          rgba(255, 0, 0, 0.03),
-          rgba(0, 255, 0, 0.01),
-          rgba(0, 0, 255, 0.03));
-      background-size: 100% 4px, 6px 100%;
-      z-index: 10;
-      opacity: 0.85;
+      display: none;
+    }
+
+    @media (min-width: 600px) {
+      .scanlines {
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.22) 50%);
+        background-size: 100% 4px;
+        z-index: 10;
+        opacity: 0.7;
+      }
     }
 
     /* Top HUD */
@@ -532,7 +535,7 @@
       <button id="startBtn" class="btn">PLAY NOW</button>
 
       <!-- iOS / Mobile Accelerometer Permission Button -->
-      <button id="tiltBtn" class="btn btn-secondary">CALIBRATE TILT (PHONE)</button>
+      <button id="tiltBtn" class="btn btn-secondary">CLICK TO ENABLE TILT (PHONE)</button>
       <div id="tiltStatus" class="tilt-status">Tilt: Standby (Keys/Drag active)</div>
 
       <div class="controls-card">
@@ -960,15 +963,25 @@
       }
     });
 
-    // Touch & Drag Controls for mobile screen interaction
+    // Touch & Drag Controls with cached bounding rect (avoids forced layout reflows on mobile)
+    let cachedCanvasRect = canvas.getBoundingClientRect();
+    window.addEventListener('resize', () => {
+      cachedCanvasRect = canvas.getBoundingClientRect();
+    });
+    window.addEventListener('orientationchange', () => {
+      setTimeout(() => {
+        cachedCanvasRect = canvas.getBoundingClientRect();
+      }, 100);
+    });
+
     function getCanvasCoords(touchEvent) {
-      const rect = canvas.getBoundingClientRect();
-      const clientX = touchEvent.touches ? touchEvent.touches[0].clientX : touchEvent.clientX;
-      const scaleX = V_WIDTH / rect.width;
-      return (clientX - rect.left) * scaleX;
+      const clientX = touchEvent.touches && touchEvent.touches.length > 0 ? touchEvent.touches[0].clientX : touchEvent.clientX;
+      const scaleX = V_WIDTH / (cachedCanvasRect.width || 360);
+      return (clientX - cachedCanvasRect.left) * scaleX;
     }
 
     canvas.addEventListener('touchstart', (e) => {
+      cachedCanvasRect = canvas.getBoundingClientRect();
       touchDragging = true;
       touchTargetX = getCanvasCoords(e);
       sound.init();
@@ -989,6 +1002,7 @@
     // Mouse drag steering fallback for desktop
     let isMouseDown = false;
     canvas.addEventListener('mousedown', (e) => {
+      cachedCanvasRect = canvas.getBoundingClientRect();
       isMouseDown = true;
       touchTargetX = getCanvasCoords(e);
       sound.init();
@@ -1005,22 +1019,18 @@
       touchTargetX = null;
     });
 
-    // Device Tilt (Accelerometer) support
+    // Device Tilt (Accelerometer) support - Zero DOM mutation in sensor callback for high performance
     function handleOrientation(event) {
-      // Gamma is left-to-right tilt in degrees [-90, 90]
-      let gamma = event.gamma;
+      const gamma = event.gamma;
       if (gamma === null || gamma === undefined) return;
 
-      // Filter and clamp
-      if (gamma > 35) gamma = 35;
-      if (gamma < -35) gamma = -35;
-      // Deadzone
-      if (Math.abs(gamma) < 2.5) gamma = 0;
+      let clampedGamma = gamma;
+      if (clampedGamma > 35) clampedGamma = 35;
+      if (clampedGamma < -35) clampedGamma = -35;
+      if (Math.abs(clampedGamma) < 2.5) clampedGamma = 0;
 
-      tiltX = gamma / 25; // Normalizes around roughly -1 to 1
+      tiltX = clampedGamma / 25;
       tiltEnabled = true;
-      tiltStatusEl.textContent = "Tilt: ACTIVE (Tilt to steer)";
-      tiltStatusEl.style.color = "#55ffff";
     }
 
     async function requestTiltPermission() {
@@ -1206,35 +1216,31 @@
           }
 
           // 1. Soft Outer Cyan Halo
-          const glowGrad = ctx.createRadialGradient(centerX, centerY, radius * 0.4, centerX, centerY, radius + 7);
-          glowGrad.addColorStop(0, `rgba(0, 220, 255, ${0.12 * alphaMult})`);
-          glowGrad.addColorStop(0.7, `rgba(0, 180, 255, ${0.22 * alphaMult})`);
-          glowGrad.addColorStop(1, `rgba(0, 150, 255, 0)`);
-          ctx.fillStyle = glowGrad;
+          ctx.fillStyle = `rgba(0, 210, 255, ${0.18 * alphaMult})`;
           ctx.beginPath();
-          ctx.arc(centerX, centerY, radius + 7, 0, Math.PI * 2);
+          ctx.arc(centerX, centerY, radius + 4, 0, Math.PI * 2);
           ctx.fill();
 
-          // 2. Blue Translucent Orb Body
-          const orbGrad = ctx.createRadialGradient(centerX - 4, centerY - 4, 3, centerX, centerY, radius);
-          orbGrad.addColorStop(0, `rgba(200, 245, 255, ${0.45 * alphaMult})`);
-          orbGrad.addColorStop(0.4, `rgba(0, 210, 255, ${0.28 * alphaMult})`);
-          orbGrad.addColorStop(0.85, `rgba(0, 140, 255, ${0.38 * alphaMult})`);
-          orbGrad.addColorStop(1, `rgba(0, 230, 255, ${0.75 * alphaMult})`);
-
-          ctx.fillStyle = orbGrad;
+          // 2. Translucent Blue Orb Fill
+          ctx.fillStyle = `rgba(0, 160, 255, ${0.30 * alphaMult})`;
           ctx.beginPath();
           ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
           ctx.fill();
 
-          // 3. Crisp Retro Energy Ring
+          // 3. Highlight Arc
+          ctx.fillStyle = `rgba(200, 245, 255, ${0.45 * alphaMult})`;
+          ctx.beginPath();
+          ctx.arc(centerX - 4, centerY - 4, radius * 0.45, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 4. Crisp Retro Energy Ring
           ctx.strokeStyle = `rgba(160, 245, 255, ${0.9 * alphaMult})`;
           ctx.lineWidth = 2;
           ctx.beginPath();
           ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
           ctx.stroke();
 
-          // 4. Orbiting Mini Energy Sparkles
+          // 5. Orbiting Mini Energy Sparkles
           for (let i = 0; i < 3; i++) {
             const angle = currentTime * 0.005 + (i * (Math.PI * 2 / 3));
             const ox = centerX + Math.cos(angle) * (radius - 2);
@@ -1598,6 +1604,7 @@
         this.recordBeatenCelebrated = false;
         this.celebrationBannerTimer = 0;
         this.lastShieldSpawnM = -70; // Cooldown tracker: minimum 65m between shields
+        this.pitGradient = null;
         this.initHands();
       }
 
@@ -2038,20 +2045,23 @@
         if (this.celebrationBannerTimer > 0) {
           ctx.save();
           const alpha = Math.min(1, this.celebrationBannerTimer / 400);
-          ctx.fillStyle = `rgba(255, 215, 0, ${alpha * 0.95})`;
           ctx.font = '10px "Press Start 2P"';
           ctx.textAlign = 'center';
-          ctx.shadowColor = '#000';
-          ctx.shadowBlur = 4;
+          // Authentic retro drop-shadow (instant, no GPU blur stall)
+          ctx.fillStyle = '#000000';
+          ctx.fillText('★ NEW RECORD! ★', V_WIDTH / 2 + 2, 77);
+          ctx.fillStyle = `rgba(255, 215, 0, ${alpha * 0.95})`;
           ctx.fillText('★ NEW RECORD! ★', V_WIDTH / 2, 75);
           ctx.restore();
         }
 
-        // Draw The Pit of Hands (Lámha) at the bottom
-        const gradient = ctx.createLinearGradient(0, V_HEIGHT - 60, 0, V_HEIGHT);
-        gradient.addColorStop(0, 'rgba(160, 20, 40, 0)');
-        gradient.addColorStop(1, 'rgba(180, 20, 50, 0.45)');
-        ctx.fillStyle = gradient;
+        // Draw The Pit of Hands (Lámha) at the bottom (cached gradient)
+        if (!this.pitGradient) {
+          this.pitGradient = ctx.createLinearGradient(0, V_HEIGHT - 60, 0, V_HEIGHT);
+          this.pitGradient.addColorStop(0, 'rgba(160, 20, 40, 0)');
+          this.pitGradient.addColorStop(1, 'rgba(180, 20, 50, 0.45)');
+        }
+        ctx.fillStyle = this.pitGradient;
         ctx.fillRect(0, V_HEIGHT - 60, V_WIDTH, 60);
 
         // Draw all hands
@@ -2063,19 +2073,24 @@
 
     const world = new GameWorld();
 
-    // --- Main Game Loop ---
+    // --- Main Game Loop (Fixed 60Hz Step for ProMotion 120Hz & 60Hz mobile displays) ---
     let lastTime = performance.now();
+    let accumulator = 0;
+    const FIXED_STEP = 1000 / 60; // 16.666ms
 
     function gameLoop(currentTime) {
-      const dt = Math.min(40, currentTime - lastTime);
+      const elapsed = Math.min(64, currentTime - lastTime);
       lastTime = currentTime;
+      accumulator += elapsed;
 
-      if (gameState === 'PLAYING') {
-        world.update(dt, currentTime);
+      while (accumulator >= FIXED_STEP) {
+        if (gameState === 'PLAYING') {
+          world.update(FIXED_STEP, currentTime);
+        }
+        accumulator -= FIXED_STEP;
       }
 
       world.draw(ctx, currentTime);
-
       requestAnimationFrame(gameLoop);
     }
 
