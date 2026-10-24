@@ -208,12 +208,13 @@
        + stacked drop-shadow for chunky 3D depth
     ============================================================== */
 
-    /* Outer red lava-brick container */
+    /* Logo container — no background, just spacing and float animation */
     .logo-title-main {
       display: inline-block;
-      padding: 20px 10px 20px;
+      padding: 8px 10px 8px;
       margin-bottom: 4px;
       position: relative;
+      animation: floatLogo 3s ease-in-out infinite;
     }
 
     /* The actual stone text — golden gradient clipped to letter shapes with grout lines */
@@ -283,6 +284,30 @@
     .retro-fada {
       position: relative;
       display: inline-block;
+    }
+
+    /*
+     * Safari fix: -webkit-background-clip:text does NOT propagate through
+     * inline-block children (they form their own formatting context).
+     * Re-applying the gradient + clip directly on the child fixes it.
+     */
+    .stone-letter-text .retro-fada {
+      background:
+        repeating-linear-gradient(0deg,
+          transparent 0px, transparent 16px,
+          rgba(80, 25, 0, 0.55) 17px, rgba(60, 15, 0, 0.70) 19px,
+          transparent 20px, transparent 36px),
+        repeating-linear-gradient(90deg,
+          transparent 0px, transparent 20px,
+          rgba(70, 20, 0, 0.50) 21px, rgba(50, 10, 0, 0.65) 23px,
+          transparent 24px, transparent 46px),
+        linear-gradient(170deg,
+          #fffde7 0%, #ffe000 6%, #ffc107 20%, #e6a000 35%,
+          #ffd740 52%, #ffb300 68%, #d48000 82%, #9a5c00 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: transparent;
     }
 
     .retro-fada::before {
