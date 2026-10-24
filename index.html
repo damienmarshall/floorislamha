@@ -1,0 +1,2160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>The Floor is Lámha - 8-Bit Retro Arcade</title>
+  <meta name="description"
+    content="The Floor is Lámha (Lámha is Irish for Hands!) - An 8-bit Doodle Jump style arcade game. Don't let the grasping hands grab you!">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    body,
+    html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #0d0e15;
+      font-family: 'Press Start 2P', monospace, sans-serif;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Ambient background arcade glow */
+    body {
+      background: radial-gradient(circle at center, #1b1c2b 0%, #0a0b12 100%);
+    }
+
+    #game-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      max-width: 440px;
+      max-height: 860px;
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.9), 0 0 15px rgba(230, 40, 70, 0.25);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #141622;
+      display: flex;
+      flex-direction: column;
+    }
+
+    @media (max-width: 480px) {
+      #game-container {
+        max-width: 100%;
+        max-height: 100%;
+        border-radius: 0;
+        box-shadow: none;
+      }
+    }
+
+    canvas#gameCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: -webkit-crisp-edges;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      background: #191c2b;
+      touch-action: none;
+    }
+
+    /* CRT Scanlines Overlay */
+    .scanlines {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%,
+          rgba(0, 0, 0, 0.28) 50%), linear-gradient(90deg,
+          rgba(255, 0, 0, 0.03),
+          rgba(0, 255, 0, 0.01),
+          rgba(0, 0, 255, 0.03));
+      background-size: 100% 4px, 6px 100%;
+      z-index: 10;
+      opacity: 0.85;
+    }
+
+    /* Top HUD */
+    #hud {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      padding: 14px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    .hud-box {
+      background: rgba(10, 11, 18, 0.85);
+      border: 3px solid #ff3355;
+      box-shadow: 2px 2px 0px #000;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      letter-spacing: 1px;
+    }
+
+    .hud-score {
+      color: #ffff55;
+    }
+
+    .hud-high {
+      color: #55ffff;
+      font-size: 9px;
+    }
+
+    .hud-btn-group {
+      pointer-events: auto;
+      display: flex;
+      gap: 6px;
+    }
+
+    .icon-btn {
+      background: #24283b;
+      border: 2px solid #555e7d;
+      box-shadow: 2px 2px 0 #000;
+      color: #fff;
+      padding: 6px 8px;
+      font-size: 10px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-family: inherit;
+    }
+
+    .icon-btn:active {
+      transform: translate(1px, 1px);
+      box-shadow: 1px 1px 0 #000;
+    }
+
+    /* Modals / Menus */
+    .screen-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(10, 12, 20, 0.92);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 20px;
+      z-index: 30;
+      text-align: center;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* Retro Pixel Title Logo */
+    .logo-container {
+      margin-bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    .logo-badge {
+      background: #ff2244;
+      color: #fff;
+      padding: 4px 10px;
+      font-size: 9px;
+      border-radius: 2px;
+      margin-bottom: 10px;
+      letter-spacing: 2px;
+      border: 2px solid #fff;
+      animation: pulse 1.5s infinite;
+    }
+
+    .logo-title-sub {
+      font-size: 13px;
+      color: #ff9955;
+      margin-bottom: 18px;
+      text-shadow: 2px 2px 0 #000;
+      letter-spacing: 2px;
+    }
+
+    .logo-title-main {
+      font-size: 26px;
+      line-height: 1.3;
+      color: #ffee33;
+      margin-top: 8px;
+      text-shadow:
+        3px 3px 0 #d91b3b,
+        -1px -1px 0 #000,
+        1px -1px 0 #000,
+        -1px 1px 0 #000,
+        4px 4px 0 #000;
+      margin-bottom: 14px;
+      animation: floatLogo 3s ease-in-out infinite;
+    }
+
+    /* Pixel-Perfect 8-Bit Irish Fada Accent (prevents font fallback shrinkage on Á) */
+    .retro-fada {
+      position: relative;
+      display: inline-block;
+    }
+
+    .retro-fada::before {
+      content: '';
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-20%) rotate(-32deg);
+      width: 10px;
+      height: 5px;
+      background-color: #ffee33;
+      box-shadow:
+        2px 2px 0 #d91b3b,
+        -1px -1px 0 #000,
+        1px -1px 0 #000,
+        -1px 1px 0 #000,
+        3px 3px 0 #000;
+    }
+
+    .retro-fada-sm {
+      position: relative;
+      display: inline-block;
+    }
+
+    .retro-fada-sm::before {
+      content: '';
+      position: absolute;
+      top: -5px;
+      left: 50%;
+      transform: translateX(-35%) rotate(-32deg);
+      width: 5px;
+      height: 2px;
+      background-color: currentColor;
+      box-shadow: 1px 1px 0 #000;
+    }
+
+    .irish-pun-hint {
+      font-size: 8px;
+      line-height: 1.6;
+      color: #99a5c4;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px dashed #4b526d;
+      padding: 6px 10px;
+      border-radius: 4px;
+      max-width: 290px;
+      margin-bottom: 18px;
+    }
+
+    .irish-pun-hint span {
+      color: #ff5577;
+    }
+
+    /* Hand sprite decoration on title */
+    .title-hands {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .pixel-art-hand {
+      width: 32px;
+      height: 48px;
+      image-rendering: pixelated;
+      animation: handWiggle 1.4s ease-in-out infinite alternate;
+    }
+
+    .pixel-art-hand:nth-child(2) {
+      animation-delay: 0.3s;
+    }
+
+    .pixel-art-hand:nth-child(3) {
+      animation-delay: 0.6s;
+    }
+
+    /* Buttons */
+    .btn {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 12px;
+      color: #ffffff;
+      background: #ff2a4b;
+      border: 3px solid #ffffff;
+      padding: 14px 22px;
+      cursor: pointer;
+      box-shadow: 0 6px 0 #9e0d24, 0 8px 12px rgba(0, 0, 0, 0.7);
+      margin-bottom: 14px;
+      width: 100%;
+      max-width: 280px;
+      transition: all 0.08s ease;
+      position: relative;
+    }
+
+    .btn:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 #9e0d24, 0 4px 6px rgba(0, 0, 0, 0.7);
+    }
+
+    .btn-secondary {
+      background: #1f75fe;
+      box-shadow: 0 5px 0 #0b45a2;
+      font-size: 9px;
+      padding: 10px 14px;
+      margin-bottom: 10px;
+    }
+
+    .btn-secondary:active {
+      transform: translateY(3px);
+      box-shadow: 0 2px 0 #0b45a2;
+    }
+
+    .tilt-status {
+      font-size: 8px;
+      color: #79dd72;
+      margin-bottom: 12px;
+    }
+
+    /* Controls guide */
+    .controls-card {
+      background: rgba(22, 25, 38, 0.9);
+      border: 2px solid #3d435c;
+      padding: 12px;
+      border-radius: 6px;
+      max-width: 290px;
+      font-size: 8px;
+      line-height: 1.8;
+      color: #b0bad4;
+      margin-top: 10px;
+    }
+
+    .controls-card b {
+      color: #fff;
+    }
+
+    .key-badge {
+      display: inline-block;
+      background: #343b56;
+      border: 1px solid #64719e;
+      color: #fff;
+      padding: 2px 5px;
+      border-radius: 3px;
+      margin: 0 2px;
+    }
+
+    /* Game Over details */
+    .gameover-title {
+      font-size: 20px;
+      color: #ff3344;
+      text-shadow: 3px 3px 0 #000;
+      margin-bottom: 16px;
+      animation: shake 0.4s ease;
+    }
+
+    .death-reason {
+      font-size: 9px;
+      color: #ffaa55;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .stats-card {
+      background: #141724;
+      border: 3px solid #ff3355;
+      padding: 16px;
+      border-radius: 6px;
+      width: 100%;
+      max-width: 280px;
+      margin-bottom: 20px;
+      box-shadow: 4px 4px 0 #000;
+    }
+
+    .stats-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 10px;
+    }
+
+    .stats-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .stats-label {
+      color: #8c98ba;
+    }
+
+    .stats-val {
+      color: #ffff55;
+    }
+
+    .stats-val.high {
+      color: #55ffff;
+    }
+
+    /* Calibration bar / touch helper */
+    #touch-steering-hint {
+      position: absolute;
+      bottom: 100px;
+      left: 0;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 24px;
+      pointer-events: none;
+      z-index: 15;
+      opacity: 0.35;
+      font-size: 8px;
+      color: #ffffff;
+    }
+
+    /* Keyframe Animations */
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 0.85;
+        transform: scale(0.97);
+      }
+    }
+
+    @keyframes floatLogo {
+
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(-5px);
+      }
+    }
+
+    @keyframes handWiggle {
+      0% {
+        transform: rotate(-8deg);
+      }
+
+      100% {
+        transform: rotate(8deg);
+      }
+    }
+
+    @keyframes shake {
+
+      0%,
+      100% {
+        transform: translateX(0);
+      }
+
+      20%,
+      60% {
+        transform: translateX(-6px);
+      }
+
+      40%,
+      80% {
+        transform: translateX(6px);
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="game-container">
+    <div class="scanlines"></div>
+
+    <!-- HUD Overlay -->
+    <div id="hud">
+      <div class="hud-box">
+        <div>HEIGHT: <span id="scoreVal" class="hud-score">0m</span></div>
+        <div>BEST: <span id="highVal" class="hud-high">0m</span></div>
+      </div>
+      <div class="hud-btn-group">
+        <button id="soundToggleBtn" class="icon-btn" title="Toggle Sound">SFX: ON</button>
+        <button id="pauseBtn" class="icon-btn" title="Pause Game">II</button>
+      </div>
+    </div>
+
+    <!-- Game Canvas -->
+    <canvas id="gameCanvas" width="360" height="640"></canvas>
+
+    <!-- Subtle on-screen touch guide for mobile -->
+    <div id="touch-steering-hint">
+      <span>◄ DRAG / TILT</span>
+      <span>TILT / DRAG ►</span>
+    </div>
+
+    <!-- START / TITLE SCREEN -->
+    <div id="titleScreen" class="screen-overlay">
+      <div class="logo-container">
+        <div class="logo-badge">ENTER IF YOU DARE!</div>
+        <div class="logo-title-sub">THE FLOOR IS</div>
+        <div class="logo-title-main">L<span class="retro-fada">A</span>MHA!</div>
+
+        <div class="title-hands">
+          <canvas id="titleHand1" class="pixel-art-hand" width="32" height="48"></canvas>
+          <canvas id="titleHand2" class="pixel-art-hand" width="32" height="48"></canvas>
+          <canvas id="titleHand3" class="pixel-art-hand" width="32" height="48"></canvas>
+        </div>
+
+        <div class="irish-pun-hint">
+          Jump, avoid the grasping <span>"L<span class="retro-fada-sm">a</span>mha"</span> at the bottom, and watch out
+          for upward smacks!
+        </div>
+      </div>
+
+      <button id="startBtn" class="btn">PLAY NOW</button>
+
+      <!-- iOS / Mobile Accelerometer Permission Button -->
+      <button id="tiltBtn" class="btn btn-secondary">CALIBRATE TILT (PHONE)</button>
+      <div id="tiltStatus" class="tilt-status">Tilt: Standby (Keys/Drag active)</div>
+
+      <div class="controls-card">
+        <b>HOW TO PLAY:</b><br>
+        • Jumper auto-bounces on platforms.<br>
+        • Steer by <b>Tilting phone</b> or using <span class="key-badge">◄</span> <span class="key-badge">►</span> /
+        <span class="key-badge">A</span> <span class="key-badge">D</span> / <b>Drag screen</b>.<br>
+        • <b>⚠️ BEWARE:</b> Bottom hands sway... when one flashes RED, it's about to smack UP to catch you!
+      </div>
+    </div>
+
+    <!-- GAME OVER SCREEN -->
+    <div id="gameOverScreen" class="screen-overlay hidden">
+      <div class="gameover-title">SNATCHED!</div>
+      <div id="deathReason" class="death-reason">You were snatched by the L<span class="retro-fada-sm">a</span>mha!
+      </div>
+
+      <div class="stats-card">
+        <div class="stats-row">
+          <span class="stats-label">HEIGHT:</span>
+          <span id="finalScore" class="stats-val">0m</span>
+        </div>
+        <div class="stats-row">
+          <span class="stats-label">RECORD:</span>
+          <span id="finalHigh" class="stats-val high">0m</span>
+        </div>
+        <div class="stats-row">
+          <span class="stats-label">HAND SMACKS DODGED:</span>
+          <span id="smacksDodged" class="stats-val">0</span>
+        </div>
+      </div>
+
+      <button id="restartBtn" class="btn">TRY AGAIN</button>
+      <button id="titleMenuBtn" class="btn btn-secondary">MAIN MENU</button>
+    </div>
+
+    <!-- PAUSE SCREEN -->
+    <div id="pauseScreen" class="screen-overlay hidden">
+      <div class="gameover-title" style="color: #ffff55;">PAUSED</div>
+      <p style="font-size: 9px; color: #a0a8c2; margin-bottom: 24px;">Take a breath... hands are waiting.</p>
+      <button id="resumeBtn" class="btn">RESUME</button>
+      <button id="quitBtn" class="btn btn-secondary">QUIT TO MENU</button>
+    </div>
+
+  </div>
+
+  <script>
+    /* =========================================================
+       THE FLOOR IS LÁMHA - 8-Bit Doodle Jump Engine
+       ========================================================= */
+
+    // --- Audio Synthesizer (Zero External Dependencies) ---
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      toggle() {
+        this.enabled = !this.enabled;
+        return this.enabled;
+      }
+
+      // Simple 8-bit square wave jump blip
+      playJump() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+
+        const now = this.ctx.currentTime;
+        osc.frequency.setValueAtTime(260, now);
+        osc.frequency.exponentialRampToValueAtTime(620, now + 0.11);
+
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.13);
+      }
+
+      // Spring booster bounce
+      playSpring() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+
+        const now = this.ctx.currentTime;
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.22);
+
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.25);
+      }
+
+      // Warning beep when hand starts flashing red
+      playWarningBeep(freq = 780) {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+
+        const now = this.ctx.currentTime;
+        osc.frequency.setValueAtTime(freq, now);
+
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.09);
+      }
+
+      // Hand smack rocket whoosh / strike
+      playSmack() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        // Noise buffer for whoosh + low punch
+        const bufferSize = this.ctx.sampleRate * 0.25;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const output = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          output[i] = Math.random() * 2 - 1;
+        }
+
+        const whiteNoise = this.ctx.createBufferSource();
+        whiteNoise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(350, this.ctx.currentTime);
+        filter.Q.setValueAtTime(3, this.ctx.currentTime);
+
+        const gain = this.ctx.createGain();
+        const now = this.ctx.currentTime;
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+        whiteNoise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        whiteNoise.start(now);
+        whiteNoise.stop(now + 0.26);
+
+        // Low pitch descending thud
+        const osc = this.ctx.createOscillator();
+        const oscGain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(140, now);
+        osc.frequency.exponentialRampToValueAtTime(45, now + 0.22);
+
+        oscGain.gain.setValueAtTime(0.22, now);
+        oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+
+        osc.connect(oscGain);
+        oscGain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.25);
+      }
+
+      // Game over crunch
+      playGameOver() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+
+        osc.frequency.setValueAtTime(260, now);
+        osc.frequency.setValueAtTime(220, now + 0.08);
+        osc.frequency.setValueAtTime(160, now + 0.16);
+        osc.frequency.setValueAtTime(90, now + 0.26);
+
+        gain.gain.setValueAtTime(0.22, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.46);
+      }
+
+      // Click UI sound
+      playClick() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        const now = this.ctx.currentTime;
+        osc.frequency.setValueAtTime(800, now);
+        gain.gain.setValueAtTime(0.06, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.04);
+      }
+
+      // 8-bit celebratory high score fanfare arpeggio
+      playRecordBeaten() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+        notes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.07);
+          gain.gain.setValueAtTime(0.12, now + idx * 0.07);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.07 + 0.16);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + idx * 0.07);
+          osc.stop(now + idx * 0.07 + 0.18);
+        });
+      }
+
+      // 8-bit shield crystal pickup chime
+      playShieldPickup() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const freqs = [587.33, 880.00, 1174.66, 1760.00]; // D5, A5, D6, A6
+        freqs.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.05);
+          gain.gain.setValueAtTime(0.14, now + idx * 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.18);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + idx * 0.05);
+          osc.stop(now + idx * 0.05 + 0.2);
+        });
+      }
+
+      // 8-bit shield deflect zap sound
+      playShieldDeflect() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(1400, now);
+        osc.frequency.exponentialRampToValueAtTime(320, now + 0.18);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.21);
+      }
+    }
+
+    const sound = new SoundEngine();
+
+    // --- Draw Pixel Art Title Preview Hands ---
+    function drawPixelArtHand(canvas, isDanger = false) {
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const pSize = 3;
+      const colorSkin = isDanger ? '#ff2244' : '#e09874';
+      const colorShadow = isDanger ? '#990022' : '#a25e40';
+      const colorOutline = '#18121a';
+
+      // Pixel matrix for 8-bit clutching hand (10 wide x 15 tall)
+      const matrix = [
+        [0, 1, 0, 1, 0, 1, 0, 1, 0, 0], // fingertips
+        [0, 1, 0, 1, 0, 1, 0, 1, 0, 0],
+        [1, 1, 0, 1, 0, 1, 0, 1, 0, 0], // thumb + fingers
+        [1, 2, 1, 1, 1, 1, 1, 1, 0, 0],
+        [1, 2, 2, 1, 1, 1, 1, 1, 1, 0],
+        [0, 1, 2, 1, 1, 1, 1, 1, 1, 0],
+        [0, 0, 1, 2, 1, 1, 1, 1, 1, 0],
+        [0, 0, 1, 2, 2, 1, 1, 1, 1, 0], // palm
+        [0, 0, 0, 1, 2, 2, 1, 1, 1, 0],
+        [0, 0, 0, 1, 2, 2, 2, 1, 1, 0],
+        [0, 0, 0, 1, 1, 2, 2, 1, 1, 0], // wrist
+        [0, 0, 0, 0, 1, 2, 2, 1, 0, 0],
+        [0, 0, 0, 0, 1, 2, 2, 1, 0, 0], // forearm
+        [0, 0, 0, 0, 1, 2, 2, 1, 0, 0],
+        [0, 0, 0, 0, 1, 2, 2, 1, 0, 0],
+        [0, 0, 0, 0, 1, 2, 2, 1, 0, 0]
+      ];
+
+      const startX = Math.floor((w - matrix[0].length * pSize) / 2);
+      const startY = Math.floor((h - matrix.length * pSize) / 2);
+
+      for (let r = 0; r < matrix.length; r++) {
+        for (let c = 0; c < matrix[r].length; c++) {
+          const val = matrix[r][c];
+          if (val === 1) {
+            ctx.fillStyle = colorSkin;
+            ctx.fillRect(startX + c * pSize, startY + r * pSize, pSize, pSize);
+          } else if (val === 2) {
+            ctx.fillStyle = colorShadow;
+            ctx.fillRect(startX + c * pSize, startY + r * pSize, pSize, pSize);
+          }
+        }
+      }
+    }
+
+    drawPixelArtHand(document.getElementById('titleHand1'), false);
+    drawPixelArtHand(document.getElementById('titleHand2'), true);
+    drawPixelArtHand(document.getElementById('titleHand3'), false);
+
+
+    // --- Game Engine Setup ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Virtual Internal Resolution (Retro 9:16 portrait)
+    const V_WIDTH = 360;
+    const V_HEIGHT = 640;
+
+    // Elements
+    const scoreValEl = document.getElementById('scoreVal');
+    const highValEl = document.getElementById('highVal');
+    const soundToggleBtn = document.getElementById('soundToggleBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const startBtn = document.getElementById('startBtn');
+    const restartBtn = document.getElementById('restartBtn');
+    const resumeBtn = document.getElementById('resumeBtn');
+    const quitBtn = document.getElementById('quitBtn');
+    const titleMenuBtn = document.getElementById('titleMenuBtn');
+    const tiltBtn = document.getElementById('tiltBtn');
+    const tiltStatusEl = document.getElementById('tiltStatus');
+
+    const titleScreen = document.getElementById('titleScreen');
+    const gameOverScreen = document.getElementById('gameOverScreen');
+    const pauseScreen = document.getElementById('pauseScreen');
+    const finalScoreEl = document.getElementById('finalScore');
+    const finalHighEl = document.getElementById('finalHigh');
+    const smacksDodgedEl = document.getElementById('smacksDodged');
+    const deathReasonEl = document.getElementById('deathReason');
+
+    // LocalStorage High Score
+    let highScore = parseInt(localStorage.getItem('theFloorIsLamha_high') || '0', 10);
+    highValEl.textContent = `${highScore}m`;
+
+    // Game States: 'TITLE', 'PLAYING', 'PAUSED', 'GAMEOVER'
+    let gameState = 'TITLE';
+    let dodgedSmacksCount = 0;
+
+    // Control Inputs
+    const keys = {
+      left: false,
+      right: false
+    };
+
+    let tiltX = 0; // -1 to 1 normalized
+    let tiltEnabled = false;
+    let touchDragging = false;
+    let touchTargetX = null;
+
+    // Keyboard Listeners
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+        keys.left = true;
+      } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+        keys.right = true;
+      } else if (e.code === 'KeyP' || e.code === 'Escape') {
+        togglePause();
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+        keys.left = false;
+      } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+        keys.right = false;
+      }
+    });
+
+    // Touch & Drag Controls for mobile screen interaction
+    function getCanvasCoords(touchEvent) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = touchEvent.touches ? touchEvent.touches[0].clientX : touchEvent.clientX;
+      const scaleX = V_WIDTH / rect.width;
+      return (clientX - rect.left) * scaleX;
+    }
+
+    canvas.addEventListener('touchstart', (e) => {
+      touchDragging = true;
+      touchTargetX = getCanvasCoords(e);
+      sound.init();
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+      if (touchDragging) {
+        touchTargetX = getCanvasCoords(e);
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', () => {
+      touchDragging = false;
+      touchTargetX = null;
+    });
+
+    // Mouse drag steering fallback for desktop
+    let isMouseDown = false;
+    canvas.addEventListener('mousedown', (e) => {
+      isMouseDown = true;
+      touchTargetX = getCanvasCoords(e);
+      sound.init();
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (isMouseDown) {
+        touchTargetX = getCanvasCoords(e);
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      isMouseDown = false;
+      touchTargetX = null;
+    });
+
+    // Device Tilt (Accelerometer) support
+    function handleOrientation(event) {
+      // Gamma is left-to-right tilt in degrees [-90, 90]
+      let gamma = event.gamma;
+      if (gamma === null || gamma === undefined) return;
+
+      // Filter and clamp
+      if (gamma > 35) gamma = 35;
+      if (gamma < -35) gamma = -35;
+      // Deadzone
+      if (Math.abs(gamma) < 2.5) gamma = 0;
+
+      tiltX = gamma / 25; // Normalizes around roughly -1 to 1
+      tiltEnabled = true;
+      tiltStatusEl.textContent = "Tilt: ACTIVE (Tilt to steer)";
+      tiltStatusEl.style.color = "#55ffff";
+    }
+
+    async function requestTiltPermission() {
+      sound.playClick();
+      if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        try {
+          const response = await DeviceOrientationEvent.requestPermission();
+          if (response === 'granted') {
+            window.addEventListener('deviceorientation', handleOrientation);
+            tiltStatusEl.textContent = "Tilt: ENABLED (Gyros ready!)";
+            tiltStatusEl.style.color = "#79dd72";
+          } else {
+            tiltStatusEl.textContent = "Tilt permission denied (Touch/Keys active)";
+            tiltStatusEl.style.color = "#ff8855";
+          }
+        } catch (err) {
+          console.warn("DeviceOrientation error:", err);
+          tiltStatusEl.textContent = "Tilt not available on this browser";
+        }
+      } else if ('ondeviceorientation' in window) {
+        window.addEventListener('deviceorientation', handleOrientation);
+        tiltStatusEl.textContent = "Tilt: ACTIVE";
+        tiltStatusEl.style.color = "#79dd72";
+      } else {
+        tiltStatusEl.textContent = "Device orientation not supported";
+      }
+    }
+
+    tiltBtn.addEventListener('click', requestTiltPermission);
+
+    // --- Jumper (Player) ---
+    class Jumper {
+      constructor() {
+        this.w = 26;
+        this.h = 28;
+        this.x = V_WIDTH / 2 - this.w / 2;
+        this.y = V_HEIGHT - 160;
+        this.vx = 0;
+        this.vy = 0;
+        this.jumpPower = -12.4;
+        this.gravity = 0.42;
+        this.facing = 1; // 1 = right, -1 = left
+        this.squash = 1; // Animation squash factor
+        this.shieldTimer = 0; // ms remaining
+        this.hasShield = false;
+      }
+
+      reset() {
+        this.x = V_WIDTH / 2 - this.w / 2;
+        this.y = V_HEIGHT - 170;
+        this.vx = 0;
+        this.vy = this.jumpPower;
+        this.facing = 1;
+        this.squash = 1;
+        this.shieldTimer = 0;
+        this.hasShield = false;
+      }
+
+      activateShield(duration = 10000) {
+        this.shieldTimer = duration;
+        this.hasShield = true;
+      }
+
+      update(dt = 16) {
+        // Shield Timer Countdown
+        if (this.shieldTimer > 0) {
+          this.shieldTimer -= dt;
+          this.hasShield = (this.shieldTimer > 0);
+        } else {
+          this.hasShield = false;
+        }
+
+        // Horizontal Movement Input
+        let moveInput = 0;
+        if (keys.left) moveInput -= 1;
+        if (keys.right) moveInput += 1;
+
+        // Apply accelerometer tilt if present
+        if (tiltEnabled && Math.abs(tiltX) > 0.05) {
+          moveInput += tiltX;
+        }
+
+        // Apply touch target steering
+        if (touchTargetX !== null) {
+          const centerPlayer = this.x + this.w / 2;
+          const diff = touchTargetX - centerPlayer;
+          if (Math.abs(diff) > 8) {
+            moveInput = Math.sign(diff) * Math.min(1.2, Math.abs(diff) / 35);
+          }
+        }
+
+        // Clamp input
+        moveInput = Math.max(-1.3, Math.min(1.3, moveInput));
+
+        // Physics acceleration & friction
+        const accel = 0.75;
+        const friction = 0.84;
+        this.vx += moveInput * accel;
+        this.vx *= friction;
+
+        if (Math.abs(this.vx) > 0.2) {
+          this.facing = this.vx > 0 ? 1 : -1;
+        }
+
+        this.x += this.vx;
+
+        // Doodle Jump Screen Wrapping
+        if (this.x < -this.w / 2) {
+          this.x = V_WIDTH - this.w / 2;
+        } else if (this.x > V_WIDTH - this.w / 2) {
+          this.x = -this.w / 2;
+        }
+
+        // Vertical Gravity
+        this.vy += this.gravity;
+        this.y += this.vy;
+
+        // Ease squash back to 1
+        this.squash += (1 - this.squash) * 0.15;
+      }
+
+      bounce(multiplier = 1) {
+        this.vy = this.jumpPower * multiplier;
+        this.squash = 0.65; // Squash down on landing
+        if (multiplier > 1.2) {
+          sound.playSpring();
+        } else {
+          sound.playJump();
+        }
+      }
+
+      draw(ctx, currentTime = 0) {
+        ctx.save();
+        ctx.translate(this.x + this.w / 2, this.y + this.h / 2);
+        ctx.scale(this.facing, 1 / this.squash);
+
+        // 8-Bit Pixel Character (Cute retro astronaut / kid jumper)
+        const p = 2; // pixel block size
+        // Body (Green jumpsuit)
+        ctx.fillStyle = '#39d353';
+        ctx.fillRect(-6 * p, -4 * p, 12 * p, 9 * p);
+
+        // Highlights
+        ctx.fillStyle = '#6ef082';
+        ctx.fillRect(-5 * p, -3 * p, 10 * p, 2 * p);
+
+        // Dark contour outline
+        ctx.fillStyle = '#112211';
+        ctx.fillRect(-7 * p, -5 * p, 14 * p, 1 * p); // head top
+        ctx.fillRect(-7 * p, 5 * p, 14 * p, 1 * p); // body bottom
+        ctx.fillRect(-7 * p, -5 * p, 1 * p, 11 * p); // left
+        ctx.fillRect(6 * p, -5 * p, 1 * p, 11 * p);  // right
+
+        // Big retro eye visor
+        ctx.fillStyle = '#223344';
+        ctx.fillRect(0, -3 * p, 5 * p, 4 * p);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(1 * p, -2 * p, 3 * p, 2 * p);
+        ctx.fillStyle = '#55ffff';
+        ctx.fillRect(2 * p, -2 * p, 1 * p, 1 * p);
+
+        // Cute feet / boots
+        ctx.fillStyle = '#ff3355';
+        ctx.fillRect(-5 * p, 5 * p, 4 * p, 3 * p);
+        ctx.fillRect(1 * p, 5 * p, 4 * p, 3 * p);
+
+        ctx.restore();
+
+        // --- Blue Translucent Shield Orb Power-Up Aura ---
+        if (this.hasShield) {
+          ctx.save();
+          const centerX = this.x + this.w / 2;
+          const centerY = this.y + this.h / 2;
+
+          // Gentle breathing pulsation
+          const pulse = Math.sin(currentTime * 0.009) * 2;
+          const radius = 24 + pulse;
+
+          // Low timer flicker warning (under 2.5 seconds remaining)
+          let alphaMult = 1;
+          if (this.shieldTimer < 2500) {
+            alphaMult = Math.floor(this.shieldTimer / 120) % 2 === 0 ? 0.35 : 1;
+          }
+
+          // 1. Soft Outer Cyan Halo
+          const glowGrad = ctx.createRadialGradient(centerX, centerY, radius * 0.4, centerX, centerY, radius + 7);
+          glowGrad.addColorStop(0, `rgba(0, 220, 255, ${0.12 * alphaMult})`);
+          glowGrad.addColorStop(0.7, `rgba(0, 180, 255, ${0.22 * alphaMult})`);
+          glowGrad.addColorStop(1, `rgba(0, 150, 255, 0)`);
+          ctx.fillStyle = glowGrad;
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, radius + 7, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 2. Blue Translucent Orb Body
+          const orbGrad = ctx.createRadialGradient(centerX - 4, centerY - 4, 3, centerX, centerY, radius);
+          orbGrad.addColorStop(0, `rgba(200, 245, 255, ${0.45 * alphaMult})`);
+          orbGrad.addColorStop(0.4, `rgba(0, 210, 255, ${0.28 * alphaMult})`);
+          orbGrad.addColorStop(0.85, `rgba(0, 140, 255, ${0.38 * alphaMult})`);
+          orbGrad.addColorStop(1, `rgba(0, 230, 255, ${0.75 * alphaMult})`);
+
+          ctx.fillStyle = orbGrad;
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 3. Crisp Retro Energy Ring
+          ctx.strokeStyle = `rgba(160, 245, 255, ${0.9 * alphaMult})`;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // 4. Orbiting Mini Energy Sparkles
+          for (let i = 0; i < 3; i++) {
+            const angle = currentTime * 0.005 + (i * (Math.PI * 2 / 3));
+            const ox = centerX + Math.cos(angle) * (radius - 2);
+            const oy = centerY + Math.sin(angle) * (radius - 2);
+            ctx.fillStyle = `rgba(255, 255, 255, ${0.9 * alphaMult})`;
+            ctx.fillRect(ox - 1.5, oy - 1.5, 3, 3);
+          }
+
+          ctx.restore();
+        }
+      }
+    }
+
+    // --- Platforms ---
+    class Platform {
+      constructor(x, y, type = 'normal') {
+        this.w = 58;
+        this.h = 14;
+        this.x = x;
+        this.y = y;
+        this.type = type; // 'normal', 'moving', 'fragile', 'spring'
+        this.vx = (type === 'moving') ? (Math.random() < 0.5 ? 1.4 : -1.4) : 0;
+        this.broken = false;
+        this.springActive = (type === 'spring');
+        this.hasShieldItem = false;
+        this.shieldItemCollected = false;
+      }
+
+      update() {
+        if (this.type === 'moving') {
+          this.x += this.vx;
+          if (this.x <= 8) {
+            this.x = 8;
+            this.vx = Math.abs(this.vx);
+          } else if (this.x + this.w >= V_WIDTH - 8) {
+            this.x = V_WIDTH - 8 - this.w;
+            this.vx = -Math.abs(this.vx);
+          }
+        }
+      }
+
+      draw(ctx, currentTime = 0) {
+        if (this.broken) return;
+
+        ctx.save();
+        const p = 2;
+
+        if (this.type === 'normal') {
+          // Classic 8-bit green platform
+          ctx.fillStyle = '#1c7430';
+          ctx.fillRect(this.x, this.y, this.w, this.h);
+          ctx.fillStyle = '#4cd137';
+          ctx.fillRect(this.x + p, this.y + p, this.w - 2 * p, 4 * p);
+          ctx.fillStyle = '#27ae60';
+          ctx.fillRect(this.x + p, this.y + 5 * p, this.w - 2 * p, 1 * p);
+
+          // Pixel border
+          ctx.strokeStyle = '#0e3d19';
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(this.x, this.y, this.w, this.h);
+
+        } else if (this.type === 'moving') {
+          // Blue sleek moving platform
+          ctx.fillStyle = '#1a5276';
+          ctx.fillRect(this.x, this.y, this.w, this.h);
+          ctx.fillStyle = '#00d2d3';
+          ctx.fillRect(this.x + p, this.y + p, this.w - 2 * p, 4 * p);
+          ctx.fillStyle = '#0abde3';
+          ctx.fillRect(this.x + p, this.y + 5 * p, this.w - 2 * p, 1 * p);
+
+          // Small moving indicator arrows
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(this.x + 6, this.y + 4, 3, 3);
+          ctx.fillRect(this.x + this.w - 9, this.y + 4, 3, 3);
+
+          ctx.strokeStyle = '#0c2e44';
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(this.x, this.y, this.w, this.h);
+
+        } else if (this.type === 'fragile') {
+          // Brown brittle cracking platform
+          ctx.fillStyle = '#784e2d';
+          ctx.fillRect(this.x, this.y, this.w, this.h);
+          ctx.fillStyle = '#b9770e';
+          ctx.fillRect(this.x + p, this.y + p, this.w - 2 * p, 4 * p);
+
+          // Cracks
+          ctx.fillStyle = '#3e2723';
+          ctx.fillRect(this.x + 16, this.y + 2, 2, 8);
+          ctx.fillRect(this.x + 36, this.y + 3, 2, 7);
+
+          ctx.strokeStyle = '#3e2723';
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(this.x, this.y, this.w, this.h);
+
+        } else if (this.type === 'spring') {
+          // Normal base + high bounce coiled spring
+          ctx.fillStyle = '#1c7430';
+          ctx.fillRect(this.x, this.y, this.w, this.h);
+          ctx.fillStyle = '#4cd137';
+          ctx.fillRect(this.x + p, this.y + p, this.w - 2 * p, 4 * p);
+
+          // Spring Coil on top
+          const sx = this.x + this.w / 2 - 6;
+          const sy = this.y - 8;
+          ctx.fillStyle = '#f1c40f';
+          ctx.fillRect(sx, sy, 12, 3);
+          ctx.fillStyle = '#e67e22';
+          ctx.fillRect(sx + 2, sy + 3, 8, 3);
+          ctx.fillStyle = '#d35400';
+          ctx.fillRect(sx, sy + 6, 12, 2);
+        }
+
+        // --- Draw Shield Power-Up Item if present and uncollected ---
+        if (this.hasShieldItem && !this.shieldItemCollected) {
+          const sx = this.x + this.w / 2;
+          const bob = Math.sin(currentTime * 0.006 + this.x) * 3;
+          const sy = this.y - 14 + bob;
+
+          // Glowing blue halo
+          ctx.fillStyle = 'rgba(0, 220, 255, 0.28)';
+          ctx.beginPath();
+          ctx.arc(sx, sy, 9, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 8-Bit Pixel Shield Orb Crystal
+          const sp = 2;
+          // Dark blue pixel outline
+          ctx.fillStyle = '#00264d';
+          ctx.fillRect(sx - 3 * sp, sy - 2 * sp, 6 * sp, 4 * sp);
+          ctx.fillRect(sx - 2 * sp, sy - 3 * sp, 4 * sp, 6 * sp);
+
+          // Bright blue crystal body
+          ctx.fillStyle = '#00b0ff';
+          ctx.fillRect(sx - 2 * sp, sy - 2 * sp, 4 * sp, 4 * sp);
+
+          // Gleam & highlights
+          ctx.fillStyle = '#80d8ff';
+          ctx.fillRect(sx - 1 * sp, sy - 2 * sp, 2 * sp, 2 * sp);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(sx, sy - 1 * sp, 1 * sp, 1 * sp);
+        }
+
+        ctx.restore();
+      }
+    }
+
+    // --- The Hands ("Lámha") System ---
+    // ~15 overlapping hands along the bottom, constantly swaying side-to-side.
+    // Every few seconds, one flashes red for 2s and smacks up to snatch the player!
+    class LamhaHand {
+      constructor(index, totalHands) {
+        this.index = index;
+        this.w = 36;
+        this.baseWidth = V_WIDTH / totalHands;
+        // Space hands across bottom with gentle overlap
+        this.baseX = index * this.baseWidth + (this.baseWidth - this.w) / 2;
+        this.x = this.baseX;
+        this.y = V_HEIGHT - 38; // resting height at bottom
+        this.baseY = this.y;
+
+        // Sway properties (each has slightly unique rhythm & offset)
+        this.swayFreq = 1.6 + (index % 4) * 0.45;
+        this.swayAmp = 10 + (index % 3) * 5;
+        this.swayPhase = (index * 0.8) % (Math.PI * 2);
+        this.fingerPhase = index * 1.2;
+
+        // State Machine: 'idle', 'warning', 'smacking', 'retracting'
+        this.state = 'idle';
+        this.stateTimer = 0;
+        this.warningDuration = 2000; // 2 seconds flash
+        this.warningFlash = false;
+        this.lastBeepTime = 0;
+
+        // Attack mechanics
+        this.attackApexY = 0;
+        this.currentArmY = this.baseY;
+        this.smackSpeed = 820; // Upward pixels per second
+        this.retractSpeed = 480;
+      }
+
+      triggerSmack(targetY) {
+        this.state = 'warning';
+        this.stateTimer = 0;
+        // Target high up to where the player is (or at least upper half of screen)
+        this.attackApexY = Math.max(70, Math.min(targetY - 30, V_HEIGHT - 180));
+      }
+
+      update(dt, currentTime) {
+        // Continuous organic 8-bit rhythmic sway
+        const sway = Math.sin(currentTime * 0.001 * this.swayFreq + this.swayPhase) * this.swayAmp;
+        this.x = this.baseX + sway;
+
+        if (this.state === 'idle') {
+          this.currentArmY = this.baseY;
+        }
+        else if (this.state === 'warning') {
+          this.stateTimer += dt;
+          // Toggle red flash every 100ms
+          this.warningFlash = Math.floor(this.stateTimer / 100) % 2 === 0;
+
+          // Warning audio beeps every 450ms
+          if (currentTime - this.lastBeepTime > 450) {
+            this.lastBeepTime = currentTime;
+            sound.playWarningBeep(820);
+          }
+
+          if (this.stateTimer >= this.warningDuration) {
+            // Launch Smack!
+            this.state = 'smacking';
+            this.stateTimer = 0;
+            this.currentArmY = this.baseY;
+            sound.playSmack();
+          }
+        }
+        else if (this.state === 'smacking') {
+          // Smacking up fast
+          this.currentArmY -= this.smackSpeed * (dt / 1000);
+          if (this.currentArmY <= this.attackApexY) {
+            this.currentArmY = this.attackApexY;
+            this.state = 'retracting';
+          }
+        }
+        else if (this.state === 'retracting') {
+          // Returning back down to floor
+          this.currentArmY += this.retractSpeed * (dt / 1000);
+          if (this.currentArmY >= this.baseY) {
+            this.currentArmY = this.baseY;
+            this.state = 'idle';
+            this.warningFlash = false;
+            dodgedSmacksCount++;
+          }
+        }
+      }
+
+      draw(ctx, currentTime) {
+        ctx.save();
+
+        const isWarning = (this.state === 'warning');
+        const isAttacking = (this.state === 'smacking' || this.state === 'retracting');
+        const drawY = isAttacking ? this.currentArmY : this.baseY;
+
+        // 1. Draw Warning Hazard Line up the Y-axis when flashing
+        if (isWarning) {
+          const flashAlpha = this.warningFlash ? 0.35 : 0.12;
+          ctx.fillStyle = `rgba(255, 30, 60, ${flashAlpha})`;
+          ctx.fillRect(this.x - 4, 0, this.w + 8, V_HEIGHT);
+
+          // Danger Warning Exclamation Marks ascending
+          if (this.warningFlash) {
+            ctx.fillStyle = '#ffee22';
+            ctx.font = '10px "Press Start 2P"';
+            ctx.textAlign = 'center';
+            for (let wy = 80; wy < V_HEIGHT - 60; wy += 90) {
+              ctx.fillText('!', this.x + this.w / 2, wy);
+            }
+          }
+        }
+
+        // 2. Draw Extended Forearm when smacking up
+        const armBottom = V_HEIGHT + 20;
+        const armTop = drawY + 28;
+
+        const isRed = (isWarning && this.warningFlash) || isAttacking;
+        const skinColor = isRed ? '#ff1d38' : '#e09874';
+        const shadowColor = isRed ? '#880018' : '#a25e40';
+        const highlightColor = isRed ? '#ffffff' : '#f5c6aa';
+
+        if (armTop < armBottom) {
+          // Retro pixel arm column
+          ctx.fillStyle = shadowColor;
+          ctx.fillRect(this.x + 8, armTop, this.w - 16, armBottom - armTop);
+
+          ctx.fillStyle = skinColor;
+          ctx.fillRect(this.x + 10, armTop, this.w - 20, armBottom - armTop);
+
+          ctx.fillStyle = highlightColor;
+          ctx.fillRect(this.x + 11, armTop, 3, armBottom - armTop);
+        }
+
+        // 3. Draw 8-Bit Pixel Hand & Fingers
+        const handTop = drawY;
+        const p = 2; // pixel block size
+        const hx = this.x;
+
+        // Grasping finger motion
+        const fingerClaw = Math.sin(currentTime * 0.003 + this.fingerPhase) * 3;
+
+        // Palm base
+        ctx.fillStyle = skinColor;
+        ctx.fillRect(hx + 6, handTop + 14, 24, 18);
+
+        // Palm shade
+        ctx.fillStyle = shadowColor;
+        ctx.fillRect(hx + 6, handTop + 24, 24, 8);
+
+        // 4 Clawing 8-bit fingers reaching up
+        const fingerHeights = [14, 18, 16, 12];
+        for (let i = 0; i < 4; i++) {
+          const fx = hx + 7 + i * 6;
+          const fLen = fingerHeights[i] + (isAttacking ? 5 : fingerClaw);
+
+          // Shadow / Outline
+          ctx.fillStyle = shadowColor;
+          ctx.fillRect(fx, handTop + 14 - fLen, 5, fLen);
+
+          // Finger body
+          ctx.fillStyle = skinColor;
+          ctx.fillRect(fx + 1, handTop + 14 - fLen, 3, fLen);
+
+          // Fingertip claw
+          ctx.fillStyle = highlightColor;
+          ctx.fillRect(fx + 1, handTop + 14 - fLen, 3, 2);
+        }
+
+        // Thumb on side
+        const tx = hx + 1;
+        ctx.fillStyle = skinColor;
+        ctx.fillRect(tx, handTop + 16, 6, 8);
+        ctx.fillStyle = highlightColor;
+        ctx.fillRect(tx, handTop + 16, 2, 3);
+
+        ctx.restore();
+      }
+
+      // Check collision with player
+      checkPlayerCollision(player) {
+        if (this.state !== 'smacking' && this.state !== 'retracting') return false;
+
+        // Hand collision box: vertical arm + grasping hand
+        const handLeft = this.x + 6;
+        const handRight = this.x + this.w - 6;
+        const handTop = this.currentArmY;
+        const handBottom = V_HEIGHT;
+
+        const pLeft = player.x;
+        const pRight = player.x + player.w;
+        const pTop = player.y;
+        const pBottom = player.y + player.h;
+
+        const overlapX = (pRight > handLeft && pLeft < handRight);
+        const overlapY = (pBottom > handTop && pTop < handBottom);
+
+        return overlapX && overlapY;
+      }
+    }
+
+    // --- Game World Manager ---
+    class GameWorld {
+      constructor() {
+        this.player = new Jumper();
+        this.platforms = [];
+        this.hands = [];
+        this.particles = [];
+        this.cameraY = 0;
+        this.maxHeight = 0;
+        this.smackInterval = 3400; // Attack frequency
+        this.lastSmackTime = 0;
+        this.lastAnchorX = V_WIDTH / 2 - 29;
+        this.lastAnchorY = V_HEIGHT - 120;
+        this.recordBeatenCelebrated = false;
+        this.celebrationBannerTimer = 0;
+        this.lastShieldSpawnM = -70; // Cooldown tracker: minimum 65m between shields
+        this.initHands();
+      }
+
+      initHands() {
+        this.hands = [];
+        const count = 15; // 15 hands across the bottom as requested
+        for (let i = 0; i < count; i++) {
+          this.hands.push(new LamhaHand(i, count));
+        }
+      }
+
+      spawnShieldPickupSparks(x, y) {
+        for (let i = 0; i < 14; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 1.4 + Math.random() * 3.2;
+          this.particles.push({
+            x, y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            color: Math.random() < 0.5 ? '#00e5ff' : '#ffffff',
+            size: Math.random() < 0.5 ? 2 : 3,
+            life: 20 + Math.floor(Math.random() * 12)
+          });
+        }
+      }
+
+      spawnShieldDeflectSparks(x, y) {
+        for (let i = 0; i < 22; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 2.5 + Math.random() * 5.2;
+          this.particles.push({
+            x, y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            color: Math.random() < 0.6 ? '#80d8ff' : (Math.random() < 0.5 ? '#00b0ff' : '#ffffff'),
+            size: 3,
+            life: 24 + Math.floor(Math.random() * 14)
+          });
+        }
+      }
+
+      reset() {
+        this.player.reset();
+        this.particles = [];
+        this.cameraY = 0;
+        this.maxHeight = 0;
+        this.lastSmackTime = performance.now() + 1500; // grace period before first smack
+        dodgedSmacksCount = 0;
+        this.recordBeatenCelebrated = false;
+        this.celebrationBannerTimer = 0;
+        this.lastShieldSpawnM = -70;
+        this.initHands();
+
+        // Generate starting platforms
+        this.platforms = [];
+        this.lastAnchorX = V_WIDTH / 2 - 29;
+        this.lastAnchorY = V_HEIGHT - 120;
+        // Solid landing platform right under player
+        this.platforms.push(new Platform(this.lastAnchorX, this.lastAnchorY, 'normal'));
+
+        // Ascend upward with guaranteed reachable platforms
+        let curY = this.lastAnchorY;
+        while (curY > -100) {
+          curY -= (62 + Math.random() * 18);
+          this.spawnReachableTier(curY);
+        }
+      }
+
+      // Clever procedural platform generation:
+      // Always guarantees at least ONE solid/moving platform is in safe jumping reach,
+      // while dynamically reducing platform density as altitude rises!
+      spawnReachableTier(targetY) {
+        // 1. GUARANTEED REACHABLE ANCHOR PLATFORM
+        const maxOffset = Math.min(95, 75 + (this.maxHeight / 300) * 20);
+        const offset = (Math.random() < 0.5 ? -1 : 1) * (38 + Math.random() * maxOffset);
+        let anchorX = this.lastAnchorX + offset;
+
+        // Screen wrap or bounce within playable margins
+        if (anchorX < 12) {
+          anchorX = (anchorX + V_WIDTH - 80) % (V_WIDTH - 80);
+        } else if (anchorX > V_WIDTH - 70) {
+          anchorX = anchorX % (V_WIDTH - 70);
+        }
+        anchorX = Math.max(12, Math.min(V_WIDTH - 70, anchorX));
+
+        // Anchor is ALWAYS landable: normal, moving, or spring (NEVER fragile!)
+        const movingChance = Math.min(0.30, 0.14 + (this.maxHeight / 300) * 0.16);
+        const rand = Math.random();
+        let anchorType = 'normal';
+        if (rand < movingChance) {
+          anchorType = 'moving';
+        } else if (rand < movingChance + 0.07) {
+          anchorType = 'spring';
+        }
+
+        // Shield Rarity & Spacing Throttle:
+        // Shields only spawn at least 65m apart (~5-6 screen heights) and never while shield is active!
+        const approxAltitudeM = Math.floor((this.cameraY + (V_HEIGHT - targetY)) / 12);
+        const canSpawnShield = (approxAltitudeM - this.lastShieldSpawnM >= 65) && !this.player.hasShield;
+        let spawnedShield = false;
+
+        const anchorPlat = new Platform(anchorX, targetY, anchorType);
+        if (canSpawnShield && anchorType !== 'spring' && Math.random() < 0.20) {
+          anchorPlat.hasShieldItem = true;
+          this.lastShieldSpawnM = approxAltitudeM;
+          spawnedShield = true;
+        }
+
+        this.platforms.push(anchorPlat);
+        this.lastAnchorX = anchorX;
+        this.lastAnchorY = targetY;
+
+        // 2. EXTRA PROCEDURAL PLATFORMS (Secondary / branching routes)
+        const extraProb = Math.max(0.06, 0.70 - (this.maxHeight / 200) * 0.64);
+
+        if (Math.random() < extraProb) {
+          const isLeft = anchorX > V_WIDTH / 2;
+          const extraX = isLeft
+            ? 12 + Math.random() * (V_WIDTH / 2 - 70)
+            : V_WIDTH / 2 + 10 + Math.random() * (V_WIDTH / 2 - 82);
+
+          const extraRand = Math.random();
+          let extraType = 'fragile';
+          if (extraRand < 0.45) {
+            extraType = 'fragile'; // crumbling brown
+          } else if (extraRand < 0.72) {
+            extraType = 'moving';
+          } else if (extraRand < 0.88) {
+            extraType = 'normal';
+          } else {
+            extraType = 'spring';
+          }
+
+          const extraY = targetY + (Math.random() * 26 - 13);
+          const extraPlat = new Platform(extraX, extraY, extraType);
+          // If shield hasn't spawned yet on anchor and cooldown passed
+          if (!spawnedShield && canSpawnShield && (extraType === 'normal' || extraType === 'moving')) {
+            if (Math.random() < 0.20) {
+              extraPlat.hasShieldItem = true;
+              this.lastShieldSpawnM = approxAltitudeM;
+            }
+          }
+          this.platforms.push(extraPlat);
+        }
+      }
+
+      update(dt, currentTime) {
+        this.player.update(dt);
+
+        // 1. Camera Upward Scroll (Doodle Jump mechanic)
+        const targetScreenY = V_HEIGHT * 0.44;
+        if (this.player.y < targetScreenY) {
+          const delta = targetScreenY - this.player.y;
+          this.player.y = targetScreenY;
+          this.cameraY += delta;
+          this.lastAnchorY += delta;
+
+          // Move all platforms down relative to camera
+          for (let p of this.platforms) {
+            p.y += delta;
+          }
+
+          // Move particles down with camera
+          for (let pt of this.particles) {
+            pt.y += delta;
+          }
+
+          // Calculate Height score in meters (12 pixels = 1 meter)
+          const currentMeters = Math.floor(this.cameraY / 12);
+          if (currentMeters > this.maxHeight) {
+            this.maxHeight = currentMeters;
+            scoreValEl.textContent = `${this.maxHeight}m`;
+
+            // Check if record was broken
+            if (this.maxHeight > highScore) {
+              if (highScore > 0 && !this.recordBeatenCelebrated) {
+                this.recordBeatenCelebrated = true;
+                this.celebrationBannerTimer = 2200; // 2.2 seconds
+                sound.playRecordBeaten();
+              }
+              highScore = this.maxHeight;
+              highValEl.textContent = `${highScore}m`;
+              localStorage.setItem('theFloorIsLamha_high', highScore.toString());
+            }
+          }
+        }
+
+        // Celebration banner countdown
+        if (this.celebrationBannerTimer > 0) {
+          this.celebrationBannerTimer -= dt;
+        }
+
+        // 2. Recycle / Spawn platforms ahead
+        this.platforms = this.platforms.filter(p => p.y < V_HEIGHT + 20);
+
+        // Find highest platform
+        let highestY = V_HEIGHT;
+        for (let p of this.platforms) {
+          if (p.y < highestY) highestY = p.y;
+        }
+
+        // Spawn new platforms above screen
+        while (highestY > -40) {
+          const baseGap = 64 + Math.min(34, (this.maxHeight / 220) * 34);
+          const gap = baseGap + Math.random() * 20;
+          highestY -= gap;
+          this.spawnReachableTier(highestY);
+        }
+
+        // 3. Platform Updates & Collisions & Shield Pickup
+        for (let plat of this.platforms) {
+          plat.update();
+
+          // Check Shield Item Collection
+          if (plat.hasShieldItem && !plat.shieldItemCollected) {
+            const itemX = plat.x + plat.w / 2;
+            const itemY = plat.y - 14;
+            const pLeft = this.player.x;
+            const pRight = this.player.x + this.player.w;
+            const pTop = this.player.y;
+            const pBottom = this.player.y + this.player.h;
+
+            if (pRight > itemX - 11 && pLeft < itemX + 11 && pBottom > itemY - 12 && pTop < itemY + 14) {
+              plat.shieldItemCollected = true;
+              this.player.activateShield(10000); // 10 seconds protection!
+              sound.playShieldPickup();
+              this.spawnShieldPickupSparks(itemX, itemY);
+            }
+          }
+
+          // Only land on platforms when falling downward
+          if (this.player.vy > 0 && !plat.broken) {
+            const footY = this.player.y + this.player.h;
+            const prevFootY = footY - this.player.vy;
+
+            const onX = (this.player.x + this.player.w > plat.x && this.player.x < plat.x + plat.w);
+            const crossPlat = (prevFootY <= plat.y + 4 && footY >= plat.y);
+
+            if (onX && crossPlat) {
+              if (plat.type === 'fragile') {
+                plat.broken = true;
+                this.player.bounce(0.85);
+              } else if (plat.type === 'spring') {
+                this.player.bounce(1.55); // Super Spring Boing!
+              } else {
+                this.player.bounce(1.0);
+              }
+            }
+          }
+        }
+
+        // 4. Update Hands & Periodic Smack Attacks
+        for (let hand of this.hands) {
+          hand.update(dt, currentTime);
+
+          // Check if smacking hand caught the player
+          if (hand.checkPlayerCollision(this.player)) {
+            if (this.player.hasShield) {
+              // SHIELD PROTECTS YOU FROM SMACKS!
+              hand.state = 'retracting'; // Hand is deflected and bounces back!
+              sound.playShieldDeflect();
+              this.spawnShieldDeflectSparks(this.player.x + this.player.w / 2, this.player.y + this.player.h / 2);
+              dodgedSmacksCount++;
+            } else {
+              triggerGameOver('Snatched mid-air by a striking L<span class="retro-fada-sm">a</span>mha!');
+              return;
+            }
+          }
+        }
+
+        // Pick a hand to smack up periodically
+        if (currentTime - this.lastSmackTime > this.smackInterval) {
+          this.lastSmackTime = currentTime;
+          this.smackInterval = Math.max(2200, 3400 - Math.min(1200, this.maxHeight * 1.5));
+
+          const idleHands = this.hands.filter(h => h.state === 'idle');
+          if (idleHands.length > 0) {
+            idleHands.sort((a, b) => {
+              const distA = Math.abs((a.baseX + a.w / 2) - (this.player.x + this.player.w / 2));
+              const distB = Math.abs((b.baseX + b.w / 2) - (this.player.x + this.player.w / 2));
+              return (distA + Math.random() * 80) - (distB + Math.random() * 80);
+            });
+
+            const chosenHand = idleHands[0];
+            chosenHand.triggerSmack(this.player.y);
+          }
+        }
+
+        // 5. Update Sparks Particles
+        for (let pt of this.particles) {
+          pt.x += pt.vx;
+          pt.y += pt.vy;
+          pt.life--;
+        }
+        this.particles = this.particles.filter(pt => pt.life > 0);
+
+        // 6. Fall into the Floor of Hands = Game Over
+        if (this.player.y + this.player.h >= V_HEIGHT - 32) {
+          triggerGameOver('Fell into the Floor of L<span class="retro-fada-sm">a</span>mha!');
+        }
+      }
+
+      draw(ctx, currentTime) {
+        // Clear Sky Background
+        ctx.fillStyle = '#171928';
+        ctx.fillRect(0, 0, V_WIDTH, V_HEIGHT);
+
+        // Retro Background Grid/Stars
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+        for (let i = 0; i < 18; i++) {
+          const sx = (i * 73 + this.cameraY * 0.1) % V_WIDTH;
+          const sy = (i * 97 + this.cameraY * 0.25) % V_HEIGHT;
+          ctx.fillRect(sx, sy, 2, 2);
+        }
+
+        // --- 1. Faint 10m Altitude Markings in Background ---
+        const ppm = 12; // 12 pixels per meter
+        const groundY = V_HEIGHT - 160;
+
+        const minVisibleM = Math.max(10, Math.floor(((this.cameraY - (V_HEIGHT - groundY)) / ppm) / 10) * 10);
+        const maxVisibleM = Math.ceil(((this.cameraY + groundY + 80) / ppm) / 10) * 10;
+
+        for (let m = minVisibleM; m <= maxVisibleM; m += 10) {
+          const lineY = groundY - (m * ppm) + this.cameraY;
+          if (lineY >= -20 && lineY <= V_HEIGHT + 20) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.11)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 6]);
+            ctx.beginPath();
+            ctx.moveTo(10, lineY);
+            ctx.lineTo(V_WIDTH - 10, lineY);
+            ctx.stroke();
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.24)';
+            ctx.font = '8px "Press Start 2P"';
+            ctx.textAlign = 'right';
+            ctx.fillText(`${m}m`, V_WIDTH - 14, lineY - 4);
+            ctx.restore();
+          }
+        }
+
+        // --- 2. High Score / Record Flag ---
+        if (highScore > 0) {
+          const flagY = groundY - (highScore * ppm) + this.cameraY;
+          if (flagY >= -50 && flagY <= V_HEIGHT + 50) {
+            ctx.save();
+
+            // Record line across screen
+            ctx.strokeStyle = 'rgba(255, 215, 0, 0.42)';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([3, 4]);
+            ctx.beginPath();
+            ctx.moveTo(0, flagY);
+            ctx.lineTo(V_WIDTH, flagY);
+            ctx.stroke();
+
+            // 8-Bit Pixel Flagpole on left edge
+            const poleX = 14;
+            const poleTop = flagY - 26;
+            const poleBottom = flagY + 8;
+
+            // Silver pole
+            ctx.fillStyle = '#b0bec5';
+            ctx.fillRect(poleX, poleTop, 3, poleBottom - poleTop);
+            // Golden finial ball on top
+            ctx.fillStyle = '#ffd700';
+            ctx.fillRect(poleX - 1, poleTop - 3, 5, 4);
+
+            // Animated waving pixel flag (Red & Gold)
+            const wave = Math.sin(currentTime * 0.007) * 2;
+            const flagW = 20;
+            const flagH = 14;
+            ctx.fillStyle = '#ff2244';
+            ctx.beginPath();
+            ctx.moveTo(poleX + 3, poleTop);
+            ctx.lineTo(poleX + 3 + flagW, poleTop + wave);
+            ctx.lineTo(poleX + 3 + flagW - 3, poleTop + flagH + wave);
+            ctx.lineTo(poleX + 3, poleTop + flagH);
+            ctx.closePath();
+            ctx.fill();
+
+            // Gold star symbol on flag
+            ctx.fillStyle = '#ffee33';
+            ctx.fillRect(poleX + 8, poleTop + 4 + wave * 0.5, 6, 6);
+
+            // Record Label Badge
+            ctx.fillStyle = 'rgba(14, 16, 26, 0.88)';
+            ctx.fillRect(poleX + 28, flagY - 20, 106, 18);
+            ctx.strokeStyle = '#ffd700';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([]);
+            ctx.strokeRect(poleX + 28, flagY - 20, 106, 18);
+
+            ctx.fillStyle = '#ffd700';
+            ctx.font = '8px "Press Start 2P"';
+            ctx.textAlign = 'left';
+            ctx.fillText(`★BEST:${highScore}m`, poleX + 33, flagY - 8);
+
+            ctx.restore();
+          }
+        }
+
+        // Draw Platforms with currentTime for powerup crystal animation
+        for (let plat of this.platforms) {
+          plat.draw(ctx, currentTime);
+        }
+
+        // Draw Sparkle Particles
+        for (let pt of this.particles) {
+          ctx.fillStyle = pt.color;
+          ctx.fillRect(pt.x, pt.y, pt.size, pt.size);
+        }
+
+        // Draw Player with currentTime for shield orb pulsation
+        this.player.draw(ctx, currentTime);
+
+        // --- Active Shield Timer HUD Display ---
+        if (this.player.hasShield) {
+          ctx.save();
+          const secLeft = Math.max(0, (this.player.shieldTimer / 1000)).toFixed(1);
+          const isFlicker = (this.player.shieldTimer < 2500 && Math.floor(this.player.shieldTimer / 120) % 2 === 0);
+
+          ctx.fillStyle = isFlicker ? 'rgba(0, 140, 255, 0.65)' : 'rgba(8, 20, 36, 0.9)';
+          ctx.fillRect(V_WIDTH / 2 - 58, 14, 116, 22);
+          ctx.strokeStyle = isFlicker ? '#ffffff' : '#00e5ff';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(V_WIDTH / 2 - 58, 14, 116, 22);
+
+          ctx.fillStyle = isFlicker ? '#ffffff' : '#80d8ff';
+          ctx.font = '8px "Press Start 2P"';
+          ctx.textAlign = 'center';
+          ctx.fillText(`🛡️ ${secLeft}s`, V_WIDTH / 2, 28);
+          ctx.restore();
+        }
+
+        // --- 3. New Record Celebration Banner ---
+        if (this.celebrationBannerTimer > 0) {
+          ctx.save();
+          const alpha = Math.min(1, this.celebrationBannerTimer / 400);
+          ctx.fillStyle = `rgba(255, 215, 0, ${alpha * 0.95})`;
+          ctx.font = '10px "Press Start 2P"';
+          ctx.textAlign = 'center';
+          ctx.shadowColor = '#000';
+          ctx.shadowBlur = 4;
+          ctx.fillText('★ NEW RECORD! ★', V_WIDTH / 2, 75);
+          ctx.restore();
+        }
+
+        // Draw The Pit of Hands (Lámha) at the bottom
+        const gradient = ctx.createLinearGradient(0, V_HEIGHT - 60, 0, V_HEIGHT);
+        gradient.addColorStop(0, 'rgba(160, 20, 40, 0)');
+        gradient.addColorStop(1, 'rgba(180, 20, 50, 0.45)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, V_HEIGHT - 60, V_WIDTH, 60);
+
+        // Draw all hands
+        for (let hand of this.hands) {
+          hand.draw(ctx, currentTime);
+        }
+      }
+    }
+
+    const world = new GameWorld();
+
+    // --- Main Game Loop ---
+    let lastTime = performance.now();
+
+    function gameLoop(currentTime) {
+      const dt = Math.min(40, currentTime - lastTime);
+      lastTime = currentTime;
+
+      if (gameState === 'PLAYING') {
+        world.update(dt, currentTime);
+      }
+
+      world.draw(ctx, currentTime);
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    requestAnimationFrame(gameLoop);
+
+
+    // --- Game Over & Pause Handlers ---
+    function triggerGameOver(reasonText) {
+      if (gameState === 'GAMEOVER') return;
+      gameState = 'GAMEOVER';
+      sound.playGameOver();
+
+      deathReasonEl.innerHTML = reasonText;
+      finalScoreEl.textContent = `${world.maxHeight}m`;
+      finalHighEl.textContent = `${highScore}m`;
+      smacksDodgedEl.textContent = `${dodgedSmacksCount}`;
+
+      setTimeout(() => {
+        gameOverScreen.classList.remove('hidden');
+      }, 400);
+    }
+
+    function startGame() {
+      sound.init();
+      sound.playClick();
+      titleScreen.classList.add('hidden');
+      gameOverScreen.classList.add('hidden');
+      pauseScreen.classList.add('hidden');
+      world.reset();
+      gameState = 'PLAYING';
+      lastTime = performance.now();
+    }
+
+    function togglePause() {
+      if (gameState === 'PLAYING') {
+        gameState = 'PAUSED';
+        pauseScreen.classList.remove('hidden');
+        sound.playClick();
+      } else if (gameState === 'PAUSED') {
+        gameState = 'PLAYING';
+        pauseScreen.classList.add('hidden');
+        lastTime = performance.now();
+        sound.playClick();
+      }
+    }
+
+    // Button Listeners
+    startBtn.addEventListener('click', startGame);
+    restartBtn.addEventListener('click', startGame);
+
+    resumeBtn.addEventListener('click', togglePause);
+    pauseBtn.addEventListener('click', togglePause);
+
+    quitBtn.addEventListener('click', () => {
+      pauseScreen.classList.add('hidden');
+      titleScreen.classList.remove('hidden');
+      gameState = 'TITLE';
+      sound.playClick();
+    });
+
+    titleMenuBtn.addEventListener('click', () => {
+      gameOverScreen.classList.add('hidden');
+      titleScreen.classList.remove('hidden');
+      gameState = 'TITLE';
+      sound.playClick();
+    });
+
+    soundToggleBtn.addEventListener('click', () => {
+      const isSoundOn = sound.toggle();
+      soundToggleBtn.textContent = isSoundOn ? 'SFX: ON' : 'SFX: OFF';
+      soundToggleBtn.style.color = isSoundOn ? '#fff' : '#ff4466';
+      if (isSoundOn) sound.playJump();
+    });
+
+    // Touch feedback on canvas to wake audio
+    window.addEventListener('click', () => sound.init(), { once: true });
+    window.addEventListener('touchstart', () => sound.init(), { once: true });
+
+  </script>
+</body>
+
+</html>
