@@ -174,7 +174,7 @@
 
     /* Retro Pixel Title Logo */
     .logo-container {
-      margin-bottom: 24px;
+      margin-bottom: 10px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -193,27 +193,90 @@
       animation: pulse 1.5s infinite;
     }
 
+    /* THE FLOOR IS — shown ABOVE the LÁMHA */
     .logo-title-sub {
       font-size: 13px;
       color: #ff9955;
-      margin-bottom: 18px;
+      margin-bottom: 8px;
       text-shadow: 2px 2px 0 #000;
-      letter-spacing: 2px;
+      letter-spacing: 3px;
     }
 
+    /* ==============================================================
+       CSS-ONLY STONE LETTER LOGO
+       Technique: background-clip:text with grout-line gradients
+       + stacked drop-shadow for chunky 3D depth
+    ============================================================== */
+
+    /* Outer red lava-brick container */
     .logo-title-main {
-      font-size: 26px;
-      line-height: 1.3;
-      color: #ffee33;
-      margin-top: 8px;
-      text-shadow:
-        3px 3px 0 #d91b3b,
-        -1px -1px 0 #000,
-        1px -1px 0 #000,
-        -1px 1px 0 #000,
-        4px 4px 0 #000;
-      margin-bottom: 14px;
-      animation: floatLogo 3s ease-in-out infinite;
+      display: inline-block;
+      padding: 20px 10px 20px;
+      margin-bottom: 4px;
+      position: relative;
+    }
+
+    /* The actual stone text — golden gradient clipped to letter shapes with grout lines */
+    .stone-letter-text {
+      display: block;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 46px;
+      letter-spacing: 3px;
+      line-height: 1;
+      position: relative;
+      z-index: 1;
+
+      /* ── Stone colour gradient + grout lines (all clipped to text shape) ── */
+      background:
+        /* Horizontal grout lines — dark bands every ~18px */
+        repeating-linear-gradient(0deg,
+          transparent 0px,
+          transparent 16px,
+          rgba(80, 25, 0, 0.55) 17px,
+          rgba(60, 15, 0, 0.70) 19px,
+          transparent 20px,
+          transparent 36px),
+        /* Vertical grout lines — dark bands every ~22px */
+        repeating-linear-gradient(90deg,
+          transparent 0px,
+          transparent 20px,
+          rgba(70, 20, 0, 0.50) 21px,
+          rgba(50, 10, 0, 0.65) 23px,
+          transparent 24px,
+          transparent 46px),
+        /* Inner stone facet highlights (light spots within blocks) */
+        repeating-linear-gradient(-45deg,
+          rgba(255, 255, 200, 0.12) 0px, rgba(255, 255, 200, 0.12) 6px,
+          transparent 6px, transparent 20px),
+        /* Main stone colour: bright top highlight → golden body → deep amber base */
+        linear-gradient(170deg,
+          #fffde7 0%,
+          /* near-white highlight crest */
+          #ffe000 6%,
+          /* bright yellow */
+          #ffc107 20%,
+          /* golden amber */
+          #e6a000 35%,
+          /* mid amber */
+          #ffd740 52%,
+          /* lighter gold mid-stone */
+          #ffb300 68%,
+          /* golden */
+          #d48000 82%,
+          /* dark amber shadow */
+          #9a5c00 100%
+          /* deep shadow at base */
+        );
+
+      /* Clip the whole layered gradient to the letter shapes */
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: transparent;
+
+      /* Chunky 3D stone depth via stacked drop-shadows */
+      filter:
+        drop-shadow(1px 1px 0 rgba(50, 15, 0, 0.95)) drop-shadow(2px 2px 0 #7a3a00) drop-shadow(3px 3px 0 #5c2800) drop-shadow(4px 4px 0 #3e1800) drop-shadow(5px 5px 0 #260e00) drop-shadow(6px 7px 10px rgba(0, 0, 0, 0.7));
     }
 
     /* Pixel-Perfect 8-Bit Irish Fada Accent (prevents font fallback shrinkage on Á) */
@@ -225,18 +288,17 @@
     .retro-fada::before {
       content: '';
       position: absolute;
-      top: -12px;
+      top: -14px;
       left: 50%;
       transform: translateX(-20%) rotate(-32deg);
-      width: 10px;
+      width: 11px;
       height: 5px;
-      background-color: #ffee33;
+      background-color: #ffe840;
       box-shadow:
-        2px 2px 0 #d91b3b,
-        -1px -1px 0 #000,
-        1px -1px 0 #000,
-        -1px 1px 0 #000,
-        3px 3px 0 #000;
+        1px 1px 0 #c87800,
+        2px 2px 0 #7a3a00,
+        -1px -1px 0 rgba(255, 255, 200, 0.6),
+        3px 3px 0 #260e00;
     }
 
     .retro-fada-sm {
@@ -265,7 +327,74 @@
       padding: 6px 10px;
       border-radius: 4px;
       max-width: 290px;
+      margin-bottom: 10px;
+    }
+
+    /* How to Play button */
+    .btn-how-to-play {
+      background: transparent;
+      border: 2px dashed #556;
+      color: #8898bb;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px;
+      padding: 8px 14px;
+      cursor: pointer;
+      border-radius: 4px;
+      margin-bottom: 16px;
+      transition: all 0.1s;
+    }
+
+    .btn-how-to-play:hover,
+    .btn-how-to-play:active {
+      border-color: #aab;
+      color: #dde;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    /* How To Play Overlay Modal */
+    #howToPlayOverlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(5, 6, 14, 0.96);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 28px 20px;
+      z-index: 50;
+      text-align: center;
+    }
+
+    .htp-title {
+      font-size: 13px;
+      color: #ffee44;
+      text-shadow: 2px 2px 0 #000;
       margin-bottom: 18px;
+    }
+
+    .htp-card {
+      background: rgba(22, 25, 42, 0.96);
+      border: 2px solid #3d435c;
+      padding: 16px 18px;
+      border-radius: 6px;
+      width: 100%;
+      max-width: 300px;
+      font-size: 8px;
+      line-height: 2.0;
+      color: #b0bad4;
+      margin-bottom: 22px;
+      text-align: left;
+    }
+
+    .htp-card b {
+      color: #ffdd88;
+    }
+
+    .htp-card .htp-row {
+      margin-bottom: 6px;
     }
 
     .irish-pun-hint span {
@@ -513,38 +642,51 @@
       <span>TILT / DRAG ►</span>
     </div>
 
+    <!-- HOW TO PLAY OVERLAY (inside game-container, shown on demand) -->
+    <div id="howToPlayOverlay" class="hidden">
+      <div class="htp-title">📖 HOW TO PLAY</div>
+      <div class="htp-card">
+        <div class="htp-row">🦘 <b>Auto-jump</b> — land on platforms and bounce automatically.</div>
+        <div class="htp-row">📱 <b>Steer</b> by tilting your phone, dragging the screen, or pressing <span
+            class="key-badge">◄</span><span class="key-badge">►</span> / <span class="key-badge">A</span><span
+            class="key-badge">D</span>.</div>
+        <div class="htp-row">⚠️ <b>BEWARE:</b> When a hand flashes <span style="color:#ff3355">RED</span>, it smacks up
+          fast to snatch you!</div>
+        <div class="htp-row">🛡️ <b>Shield orb</b> — grab the blue crystal on a platform for 10s protection.</div>
+        <div class="htp-row">💀 <b>Fall</b> into the floor of hands = instant game over.</div>
+        <div class="htp-row">🏴 A <b>gold flag</b> marks your current record height.</div>
+      </div>
+      <button id="closeHtpBtn" class="btn" style="max-width:220px;font-size:10px;">GOT IT!</button>
+    </div>
+
     <!-- START / TITLE SCREEN -->
     <div id="titleScreen" class="screen-overlay">
+
       <div class="logo-container">
         <div class="logo-badge">ENTER IF YOU DARE!</div>
         <div class="logo-title-sub">THE FLOOR IS</div>
-        <div class="logo-title-main">L<span class="retro-fada">A</span>MHA!</div>
-
-        <div class="title-hands">
-          <canvas id="titleHand1" class="pixel-art-hand" width="32" height="48"></canvas>
-          <canvas id="titleHand2" class="pixel-art-hand" width="32" height="48"></canvas>
-          <canvas id="titleHand3" class="pixel-art-hand" width="32" height="48"></canvas>
-        </div>
-
-        <div class="irish-pun-hint">
-          Jump, avoid the grasping <span>"L<span class="retro-fada-sm">a</span>mha"</span> at the bottom, and watch out
-          for upward smacks!
+        <div class="logo-title-main">
+          <span class="stone-letter-text">L<span class="retro-fada">A</span>MHA!</span>
         </div>
       </div>
 
-      <button id="startBtn" class="btn">PLAY NOW</button>
+      <div class="title-hands">
+        <canvas id="titleHand1" class="pixel-art-hand" width="32" height="48"></canvas>
+        <canvas id="titleHand2" class="pixel-art-hand" width="32" height="48"></canvas>
+        <canvas id="titleHand3" class="pixel-art-hand" width="32" height="48"></canvas>
+      </div>
+
+      <div class="irish-pun-hint">
+        <b>Lámha</b> = Irish for <span style="color:#ff8844">Hands</span>. Jump up, dodge the grasping floor!
+      </div>
+
+      <button id="howToPlayBtn" class="btn-how-to-play">❓ HOW TO PLAY</button>
+
+      <button id="startBtn" class="btn">▶ PLAY NOW</button>
 
       <!-- iOS / Mobile Accelerometer Permission Button -->
       <button id="tiltBtn" class="btn btn-secondary">CLICK TO ENABLE TILT (PHONE)</button>
       <div id="tiltStatus" class="tilt-status">Tilt: Standby (Keys/Drag active)</div>
-
-      <div class="controls-card">
-        <b>HOW TO PLAY:</b><br>
-        • Jumper auto-bounces on platforms.<br>
-        • Steer by <b>Tilting phone</b> or using <span class="key-badge">◄</span> <span class="key-badge">►</span> /
-        <span class="key-badge">A</span> <span class="key-badge">D</span> / <b>Drag screen</b>.<br>
-        • <b>⚠️ BEWARE:</b> Bottom hands sway... when one flashes RED, it's about to smack UP to catch you!
-      </div>
     </div>
 
     <!-- GAME OVER SCREEN -->
@@ -2143,6 +2285,21 @@
 
     resumeBtn.addEventListener('click', togglePause);
     pauseBtn.addEventListener('click', togglePause);
+
+    // How To Play overlay
+    const howToPlayOverlay = document.getElementById('howToPlayOverlay');
+    const howToPlayBtn = document.getElementById('howToPlayBtn');
+    const closeHtpBtn = document.getElementById('closeHtpBtn');
+
+    howToPlayBtn.addEventListener('click', () => {
+      sound.playClick();
+      howToPlayOverlay.classList.remove('hidden');
+    });
+
+    closeHtpBtn.addEventListener('click', () => {
+      sound.playClick();
+      howToPlayOverlay.classList.add('hidden');
+    });
 
     quitBtn.addEventListener('click', () => {
       pauseScreen.classList.add('hidden');
